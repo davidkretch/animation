@@ -116,11 +116,19 @@ class Pico8 {
   }
 
   // Run the PICO-8 program
-  run() {
+  run(f) {
+    init();
+    f();
     window.setInterval(() => {
+      this.update();
       this.draw();
       this.display();
     }, this.wait);
+  }
+
+  // Called once on program startup
+  init() {
+
   }
 
   // Called once per visible frame
@@ -128,7 +136,12 @@ class Pico8 {
 
   }
 
-  // Render pixel data to the offscreen canvas, then scale it to the onscreen
+  // Called once per update at 30fps
+  update() {
+
+  }
+
+  // Display the frame stored in `pixels` on the screen
   display() {
     var size = this.size;
     var imageArray = new Uint8ClampedArray(size * size * 4);
@@ -145,14 +158,17 @@ class Pico8 {
     var imageData = new ImageData(imageArray, size, size);
     this.offscreenCtx.putImageData(imageData, 0, 0);
     var height = this.onscreen.height,
-      width = this.onscreen.width;
+        width = this.onscreen.width;
     this.onscreenCtx.drawImage(this.offscreen, 0, 0, height, width);
   }
 
+  // Run a given function continuously between screen updates
   loop(f) {
-    var start = performance.now();
-    while (performance.now() - start < this.wait) {
-      f();
+    this.update = () => {
+      var start = performance.now();
+      while (performance.now() - start < this.wait) {
+        f();
+      }  
     }
   }
 
@@ -208,8 +224,7 @@ class Pico8 {
     var x = Math.floor(x),
         y = Math.floor(y),
         c = Math.floor(c);
-    var max = this.palette.length;
-    this.pixels[x + y * this.size] = c < max ? c : 0 ;
+    this.pixels[x + y * this.size] = c % this.palette.length;
   }
 }
 
@@ -220,11 +235,11 @@ function animation() {
 
   // Algorithm by Sean S. LeBlanc
   // https://twitter.com/SeanSLeBlanc/status/982648532296503304
-  p.draw = () => {
+  cart = () => {
     for (var i = 1; i <= 16; i++) {
       pal(i-1, sub('029878920', i/2, i/2), 1);
     }
-    // cls();
+    cls();
     loop(() => {
       var x = rnd(128);
       var y = rnd(128);
@@ -242,5 +257,5 @@ function animation() {
     });
   };
 
-  run();
+  run(cart);
 }
