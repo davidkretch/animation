@@ -11,9 +11,24 @@ function abs(x) {
   return Math.abs(x);
 }
 
-// Returns a random number n, where 0 <= n < x
-function rnd(x) {
-  return Math.random() * x;
+// Returns the closest integer that is equal to or below x
+function flr(x) {
+  return Math.floor(x);
+}
+
+// Returns the closest integer that is equal to or above x
+function ceil(x) {
+  return Math.ceil(x);
+}
+
+// Returns the sign of x
+function sgn(x) {
+  return Math.sign(x);
+}
+
+// Returns a mod b
+function mod(a, b) {
+  return a - b * Math.floor(a / b);
 }
 
 // Returns the sine of x, where 1.0 indicates a full circle
@@ -32,12 +47,10 @@ function cos(x) {
 // As with cos/sin, angle is taken to run anticlockwise in screenspace
 // e.g. atan(1, -1) returns 0.125
 function atan2(dx, dy) {
-  return Math.atan2(-dy, dx) / (2 * Math.PI);
-}
-
-// Returns the time in seconds, to millisecond precision
-function t() {
-  return Date.now() / 1000;
+  if (dx == 0 && dy == 0) return 0.75;
+  var a = Math.atan2(-dy, dx) / (2 * Math.PI);
+  if (a < 0) a = 1 + a;
+  return a;
 }
 
 //------------------------------------------------------------------------------
@@ -70,6 +83,16 @@ class Pico8 {
     this.fps = 30;
     this.wait = 1000 / this.fps;
 
+    // Time since startup
+    this.start = performance.now();
+    this.time = 0;
+    window.setInterval(() => {
+      this.time = (performance.now() - this.start) / 1000;
+    }, 10)
+
+    // Random number state 
+    this.state = Math.random();
+
     // PICO-8 color palette
     this.palette = [
       [  0,   0,   0],  //  0 black
@@ -100,6 +123,7 @@ class Pico8 {
     this.pixels = new Uint8ClampedArray(this.size * this.size);
 
     // Offscreen image
+    // TODO: Render to onscreen canvas then scale using CSS?
     this.offscreen = createCanvas(this.size);
     this.offscreenCtx = this.offscreen.getContext('2d');
 
@@ -107,6 +131,7 @@ class Pico8 {
     this.onscreen = createCanvas(512);
     this.onscreenCtx = this.onscreen.getContext('2d');
     this.onscreenCtx.imageSmoothingEnabled = false;
+    // this.onscreenCtx.filter = 'blur(0.5px)';
     document.body.appendChild(this.onscreen);
 
     // Make all methods global so we can access them as we would in PICO-8
@@ -122,7 +147,6 @@ class Pico8 {
     window.setInterval(() => {
       this.update();
       this.draw();
-      this.display();
     }, this.wait);
   }
 
@@ -133,7 +157,7 @@ class Pico8 {
 
   // Called once per visible frame
   draw() {
-
+    display();
   }
 
   // Called once per update at 30fps
@@ -162,13 +186,38 @@ class Pico8 {
     this.onscreenCtx.drawImage(this.offscreen, 0, 0, height, width);
   }
 
+  // Flip the back buffer to screen and wait for next frame (30fps)
+  // TODO: Make flip wait until the next update
+  flip() {
+
+  }
+
+  t() {
+    return this.time;
+  }
+
+  // Returns a random number n, where 0 <= n < x
+  // See https://en.wikipedia.org/wiki/Linear_congruential_generator
+  rnd(x = 1) {
+    var a = 1664525,
+        c = 1013904223,
+        modulus = 2**32;
+    this.state = (a * this.state + c) % modulus;
+    return this.state / modulus * x;
+  }
+
+  // Sets the random number seed
+  srand(x) {
+    this.state = x;
+  }
+
   // Run a given function continuously between screen updates
   loop(f) {
     this.update = () => {
       var start = performance.now();
       while (performance.now() - start < this.wait) {
         f();
-      }  
+      }
     }
   }
 
@@ -183,47 +232,104 @@ class Pico8 {
   // 0 draw palette   : colors are remapped on draw    // e.g. to re-color sprites
   // 1 screen palette : colors are remapped on display // e.g. for fades
   pal(c0, c1) {
+    var max = this.palette.length;
+    if (c0 < 0 || c0 >= max || c1 < 0 || c1 >= max) return;
     this.map[c0] = c1;
   }
 
   // Draw a line
   line(x0, y0, x1, y1, c) {
-    if (x1 < x0) {
-      [x0, x1] = swap(x0, x1);
-      [y0, y1] = swap(y0, y1);
-    }
+    var x0 = flr(x0),
+        y0 = flr(y0),
+        x1 = flr(x1),
+        y1 = flr(y1),
+        c = flr(c);
+    
     var dx = x1 - x0;
     var dy = y1 - y0;
-    var m = dy / dx;
-    if (m <= 1) {
-      var y = y0;
-      for (var x = x0; x <= x1; x++) {
-        pset(Math.round(x), Math.round(y), c);
+    pset(x0, y0, c);
+    if (abs(dx) > abs(dy)) {
+      var sx = sgn(dx);
+      var m = dy / dx * sx;
+      var x = x0,
+          y = y0;
+      while (x != x1) {
+        x += sx;
         y += m;
+        pset(x, y, c);
       }
     } else {
-      var x = x0;
-      m = dx / dy;
-      for (var y = y0; y <= y1; y++) {
-        pset(Math.round(x), Math.round(y), c);
+      var sy = sgn(dy);
+      var m = dx / dy * sy;
+      var x = x0,
+          y = y0;
+      while (y != y1) {
+        y += sy;
         x += m;
+        pset(x, y, c);
       }
+    }
+  }
 
+  // Draw a circle at x, y with radius r
+  circ(x0, y0, r, c) {
+    if (r < 0) return;
+    var x0 = flr(x0),
+        y0 = flr(y0),
+        r = flr(r),
+        c = flr(c);
+
+    var x = 0;
+    var y = r;
+    var p = (5 - r*4)/4;
+
+    while (x <= y) {
+      if (x === 0) {
+        // 0, 90, 180, 270 degrees
+        this.pset(x0    , y0 + y, c);
+        this.pset(x0    , y0 - y, c);
+        this.pset(x0 + y, y0    , c);
+        this.pset(x0 - y, y0    , c);
+      } else if (x === y) {
+        // 45, 135, etc.
+        this.pset(x0 + x, y0 + y, c);
+        this.pset(x0 - x, y0 + y, c);
+        this.pset(x0 + x, y0 - y, c);
+        this.pset(x0 - x, y0 - y, c);
+      } else if (x < y) {
+        this.pset(x0 + x, y0 + y, c);
+        this.pset(x0 - x, y0 + y, c);
+        this.pset(x0 + x, y0 - y, c);
+        this.pset(x0 - x, y0 - y, c);
+        this.pset(x0 + y, y0 + x, c);
+        this.pset(x0 - y, y0 + x, c);
+        this.pset(x0 + y, y0 - x, c);
+        this.pset(x0 - y, y0 - x, c);
+      }
+      x++;
+      if (p < 0) {
+        p += 2*x + 1;
+      } else {
+        y--;
+        p += 2*(x-y) + 1;
+      }
     }
   }
 
   // Get the color of a pixel at x, y
   pget(x, y) {
-    var x = Math.floor(x),
-        y = Math.floor(y);
+    if (x < 0 || x >= this.size || y < 0 || y >= this.size) return 0;
+    var x = flr(x),
+        y = flr(y);
     return this.pixels[x + y * this.size];
   }
 
   // Set the color (c) of a pixel at x, y
   pset(x, y, c) {
-    var x = Math.floor(x),
-        y = Math.floor(y),
-        c = Math.floor(c);
+    if (x < 0 || x >= this.size || y < 0 || y >= this.size) return;
+    var x = flr(x),
+        y = flr(y),
+        c = flr(c);
     this.pixels[x + y * this.size] = c % this.palette.length;
   }
 }
@@ -231,11 +337,11 @@ class Pico8 {
 //------------------------------------------------------------------------------
 
 function animation() {
-  p = new Pico8();
+  var p = new Pico8();
 
   // Algorithm by Sean S. LeBlanc
   // https://twitter.com/SeanSLeBlanc/status/982648532296503304
-  cart = () => {
+  var whirlwind = () => {
     for (var i = 1; i <= 16; i++) {
       pal(i-1, sub('029878920', i/2, i/2), 1);
     }
@@ -257,5 +363,27 @@ function animation() {
     });
   };
 
-  run(cart);
+  // Algorithm by Eli Piilonen
+  // https://twitter.com/2DArray/status/992601223491600386
+  // In Lua, % is modulo, but in JS, % is remainder, so all % are now mod
+  var leaves = () => {
+    var r = rnd;
+    loop(() => {
+      cls();
+      var s = t();
+      srand(0);
+      for (var i = 1; i <= 60; i++) {
+        var x = mod(r(148)+sin(s/(3+r(3)))*5-s*(2+rnd(12))+10,147)-10;
+        var y = mod(r(148)+s*(3+r(8))+10,147)-10;
+        var u = sin(r()+s*r()/3);
+        var v = cos(r()+s*r()/3);
+        for (var j = -7; j <= 7; j++) {
+          circ(x+u*j-v*abs(j/4),y+v*j+u*abs(j/4),abs(u*v)*(7-abs(j))/1.5,3+mod(j,2)*8);
+        }
+      }
+      flip();
+    });
+  }
+
+  run(whirlwind);
 }
