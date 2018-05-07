@@ -31,6 +31,11 @@ function mod(a, b) {
   return a - b * Math.floor(a / b);
 }
 
+// Returns the square root of x
+function sqrt(x) {
+  return Math.sqrt(x);
+}
+
 // Returns the sine of x, where 1.0 indicates a full circle
 // sin is inverted to suit screenspace
 // e.g. sin(0.25) returns -1
@@ -63,14 +68,6 @@ function createCanvas(size) {
   return canvas;
 }
 
-// Swap a and b
-function swap(a, b) {
-  var tmp = a;
-  a = b;
-  b = tmp;
-  return [a, b];
-}
-
 //------------------------------------------------------------------------------
 
 class Pico8 {
@@ -92,6 +89,10 @@ class Pico8 {
 
     // Random number state 
     this.state = Math.random();
+
+    // Whether to continue running the loop function
+    // Allows early stopping rather than running continuously between draws
+    this.continue = true;
 
     // PICO-8 color palette
     this.palette = [
@@ -128,7 +129,7 @@ class Pico8 {
     this.offscreenCtx = this.offscreen.getContext('2d');
 
     // Onscreen image
-    this.onscreen = createCanvas(512);
+    this.onscreen = createCanvas(384);
     this.onscreenCtx = this.onscreen.getContext('2d');
     this.onscreenCtx.imageSmoothingEnabled = false;
     // this.onscreenCtx.filter = 'blur(0.5px)';
@@ -145,6 +146,8 @@ class Pico8 {
     init();
     f();
     window.setInterval(() => {
+      this.continue = true;
+      this.loop();
       this.update();
       this.draw();
     }, this.wait);
@@ -187,9 +190,9 @@ class Pico8 {
   }
 
   // Flip the back buffer to screen and wait for next frame (30fps)
-  // TODO: Make flip wait until the next update
   flip() {
-
+    this.display();
+    this.continue = false;
   }
 
   t() {
@@ -213,9 +216,9 @@ class Pico8 {
 
   // Run a given function continuously between screen updates
   loop(f) {
-    this.update = () => {
+    this.loop = () => {
       var start = performance.now();
-      while (performance.now() - start < this.wait) {
+      while (this.continue && performance.now() - start < this.wait) {
         f();
       }
     }
@@ -227,17 +230,13 @@ class Pico8 {
   }
 
   // Draw all instances of color c0 as c1 in subsequent draw calls
-  //
-  // Two types of palette (p; defaults to 0)
-  // 0 draw palette   : colors are remapped on draw    // e.g. to re-color sprites
-  // 1 screen palette : colors are remapped on display // e.g. for fades
   pal(c0, c1) {
     var max = this.palette.length;
     if (c0 < 0 || c0 >= max || c1 < 0 || c1 >= max) return;
     this.map[c0] = c1;
   }
 
-  // Draw a line
+  // Draw a line from x0, y0 to x1, y1 with color c
   line(x0, y0, x1, y1, c) {
     var x0 = flr(x0),
         y0 = flr(y0),
@@ -271,7 +270,7 @@ class Pico8 {
     }
   }
 
-  // Draw a circle at x, y with radius r
+  // Draw a circle at x, y with radius r and color c
   circ(x0, y0, r, c) {
     if (r < 0) return;
     var x0 = flr(x0),
@@ -352,14 +351,14 @@ function animation() {
       var a = 64 + 32*sin(t()/2) - x;
       var b = 64 + 32*cos(t()/3) - y;
       var z = atan2(a, b) + t()/4;
-      var c = (
-        pget(x  , y  )+
-        pget(x+1, y  )+
-        pget(x  , y+1)+
-        pget(x+1, y+1)
+      line(x,y,x+cos(z)*4,y+sin(z)*4,
+        (
+          pget(x,y)+
+          pget(x+1,y)+
+          pget(x,y+1)+
+          pget(x+1,y+1)
         )/4
-        +1;
-      line(x, y, x+cos(z)*4, y+sin(z)*4, c);
+        +1);
     });
   };
 
@@ -385,5 +384,23 @@ function animation() {
     });
   }
 
-  run(whirlwind);
+  // Algorithm by Joseph White
+  // https://twitter.com/lexaloffle/status/844964963315703809
+  var waves = () => {
+    var r = 64;
+    var t = 0;
+    loop(() => {
+      cls();
+      for (var y = -r; y <= r; y += 3) {
+        for (var x = -r; x <= r; x += 2) {
+          var z = cos(sqrt(x*x+y*y*2)/40-t)*6;
+          pset(r+x,r+y-z,6);
+        }
+      }
+      flip();
+      t += 2/r;
+    });
+  }
+
+  run(leaves);
 }
