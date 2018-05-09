@@ -6,6 +6,11 @@ function sub(s, start, end) {
   return s.substring(start, end + 1);
 }
 
+// Returns the minimum of parameters
+function min(...values) {
+  return Math.min(...values);
+}
+
 // Returns the absolute (positive) value of x
 function abs(x) {
   return Math.abs(x);
@@ -52,10 +57,30 @@ function cos(x) {
 // As with cos/sin, angle is taken to run anticlockwise in screenspace
 // e.g. atan(1, -1) returns 0.125
 function atan2(dx, dy) {
-  if (dx == 0 && dy == 0) return 0.75;
+  if (dx === 0 && dy === 0) return 0.75;
   var a = Math.atan2(-dy, dx) / (2 * Math.PI);
   if (a < 0) a = 1 + a;
   return a;
+}
+
+// Add value v to the end of table t
+function add(t, v) {
+  return t.push(v);
+}
+
+// Delete the first instance of value v in table t
+function del(t, v) {
+  for (var i = 0; i < t.length; i++) {
+    if (t[i] === v) {
+      t.splice(i, 1);
+      break;
+    }
+  }
+}
+
+// Returns the length of table t
+function len(t) {
+  return t.length;
 }
 
 //------------------------------------------------------------------------------
@@ -94,8 +119,8 @@ class Pico8 {
     // Allows early stopping rather than running continuously between draws
     this.continue = true;
 
-    // PICO-8 color palette
-    this.palette = [
+    // PICO-8 colors
+    this.colors = [
       [  0,   0,   0],  //  0 black
       [ 29,  43,  83],  //  1 dark-blue
       [126,  37,  83],  //  2 dark-purple
@@ -114,11 +139,10 @@ class Pico8 {
       [255, 204, 170]   // 15 peach
     ];
 
-    // Color mapping
-    this.map = new Uint8ClampedArray(this.palette.length);
-    for (var i = 0; i < this.map.length; i++) {
-      this.map[i] = i;
-    }
+    // Draw and screen palettes
+    this.drawPalette = new Uint8ClampedArray(this.colors.length);
+    this.screenPalette = new Uint8ClampedArray(this.colors.length);
+    this.pal();
 
     // Pixel array
     this.pixels = new Uint8ClampedArray(this.size * this.size);
@@ -132,7 +156,7 @@ class Pico8 {
     this.onscreen = createCanvas(384);
     this.onscreenCtx = this.onscreen.getContext('2d');
     this.onscreenCtx.imageSmoothingEnabled = false;
-    // this.onscreenCtx.filter = 'blur(0.5px)';
+    this.onscreenCtx.filter = 'blur(0.5px)';
     document.body.appendChild(this.onscreen);
 
     // Make all methods global so we can access them as we would in PICO-8
@@ -169,12 +193,21 @@ class Pico8 {
   }
 
   // Display the frame stored in `pixels` on the screen
+  // TODO: Refactor
   display() {
     var size = this.size;
+
+    // Update the frame based on the screen palette
+    for (var i = 0; i < size * size; i++) {
+      var pixel = this.pixels[i];
+      this.pixels[i] = this.screenPalette[pixel];
+    }
+
+    // Push the frame to the screen
     var imageArray = new Uint8ClampedArray(size * size * 4);
     for (var i = 0; i < size * size; i++) {
       var pixel = this.pixels[i];
-      var [r, g, b] = this.palette[this.map[pixel]];
+      var [r, g, b] = this.colors[pixel];
       var a = 255; // TODO
       var index = i * 4;
       imageArray[index + 0] = r;
@@ -210,7 +243,7 @@ class Pico8 {
   }
 
   // Sets the random number seed
-  srand(x) {
+  srand(x = 0) {
     this.state = x;
   }
 
@@ -220,7 +253,7 @@ class Pico8 {
       var start = performance.now();
       while (this.continue && performance.now() - start < this.wait) {
         f();
-      }
+      }  
     }
   }
 
@@ -230,14 +263,32 @@ class Pico8 {
   }
 
   // Draw all instances of color c0 as c1 in subsequent draw calls
-  pal(c0, c1) {
-    var max = this.palette.length;
+  // pal() to reset to system defaults (including transparency values and fill pattern)
+	// Two types of palette (p; defaults to 0)
+  // 0 draw palette   : colours are remapped on draw    // e.g. to re-colour sprites
+  // 1 screen palette : colours are remapped on display // e.g. for fades
+  pal(c0, c1, p = 0) {
+    var max = this.colors.length;
     if (c0 < 0 || c0 >= max || c1 < 0 || c1 >= max) return;
-    this.map[c0] = c1;
+
+    if (typeof c0 === "undefined" && typeof c1 === "undefined") {
+      for (var i = 0; i < max; i++) {
+        this.drawPalette[i] = i;
+        this.screenPalette[i] = i;
+      }
+    }
+
+    if (p === 0) {
+      this.drawPalette[c0] = c1;
+    } else if (p === 1) {
+      this.screenPalette[c0] = c1;
+    }
   }
 
   // Draw a line from x0, y0 to x1, y1 with color c
   line(x0, y0, x1, y1, c) {
+    if (isNaN(x0) || isNaN(y0) || isNaN(x1) || isNaN(y1)) return;
+
     var x0 = flr(x0),
         y0 = flr(y0),
         x1 = flr(x1),
@@ -272,6 +323,7 @@ class Pico8 {
 
   // Draw a circle at x, y with radius r and color c
   circ(x0, y0, r, c) {
+    if (isNaN(x0) || isNaN(y0) || isNaN(r)) return;
     if (r < 0) return;
     var x0 = flr(x0),
         y0 = flr(y0),
@@ -329,7 +381,7 @@ class Pico8 {
     var x = flr(x),
         y = flr(y),
         c = flr(c);
-    this.pixels[x + y * this.size] = c % this.palette.length;
+    this.pixels[x + y * this.size] = c % this.colors.length;
   }
 }
 
@@ -348,9 +400,9 @@ function animation() {
     loop(() => {
       var x = rnd(128);
       var y = rnd(128);
-      var a = 64 + 32*sin(t()/2) - x;
-      var b = 64 + 32*cos(t()/3) - y;
-      var z = atan2(a, b) + t()/4;
+      var a = 64+32*sin(t()/2)-x;
+      var b = 64+32*cos(t()/3)-y;
+      var z = atan2(a,b)+t()/4;
       line(x,y,x+cos(z)*4,y+sin(z)*4,
         (
           pget(x,y)+
@@ -371,12 +423,12 @@ function animation() {
       cls();
       var s = t();
       srand(0);
-      for (var i = 1; i <= 60; i++) {
+      for (var i=1; i<=60; i++) {
         var x = mod(r(148)+sin(s/(3+r(3)))*5-s*(2+rnd(12))+10,147)-10;
         var y = mod(r(148)+s*(3+r(8))+10,147)-10;
         var u = sin(r()+s*r()/3);
         var v = cos(r()+s*r()/3);
-        for (var j = -7; j <= 7; j++) {
+        for (var j=-7; j<=7; j++) {
           circ(x+u*j-v*abs(j/4),y+v*j+u*abs(j/4),abs(u*v)*(7-abs(j))/1.5,3+mod(j,2)*8);
         }
       }
@@ -391,8 +443,8 @@ function animation() {
     var t = 0;
     loop(() => {
       cls();
-      for (var y = -r; y <= r; y += 3) {
-        for (var x = -r; x <= r; x += 2) {
+      for (var y=-r; y<=r; y+=3) {
+        for (var x=-r; x<=r; x+=2) {
           var z = cos(sqrt(x*x+y*y*2)/40-t)*6;
           pset(r+x,r+y-z,6);
         }
@@ -400,6 +452,34 @@ function animation() {
       flip();
       t += 2/r;
     });
+  }
+
+  // Algorithm by Eli Piilonen
+  // https://twitter.com/2DArray/status/993594055849164800
+  var tree = () => {
+    loop(() => {
+      cls()
+      for (var i=-1; i<=1; i++) {
+        srand();
+        var x=64, y=128, m=x*y, f=[], l=10, r=0;
+        while (1) {
+          l-=1, u=x, v=y, r+=.02;
+          x+=sin(r+t()/8)*7;
+          y-=rnd(9)+7;
+          line(u+i,v,x+i,y,4-min(i,0)*5);
+          if (l<1) {
+            if (len(f)==0) break;
+            circ(x,y,rnd(9)+i,2+i);
+            n=f[len(f)-1];
+            del(f,n);
+            x=n[0], y=n[1], l=n[2];
+          } else {
+            add(f,[x,y,l-1]);
+          }
+        }
+      }
+      flip();  
+    })
   }
 
   run(leaves);
