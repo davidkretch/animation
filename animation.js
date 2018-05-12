@@ -3,7 +3,16 @@
 // print(sub(s,5,9))  --> "quick"
 // print(sub(s,5))  --> "quick brown fox"
 function sub(s, start, end) {
-  return s.substring(start, end + 1);
+  if (start >= 1) {
+    start -= 1;
+  } else if (start < 0) {
+    start = s.length + start
+}
+  if (end === undefined) {
+    return s.substring(start);
+  } else {
+    return s.substring(start, end);
+  }
 }
 
 // Returns the minimum of parameters
@@ -118,6 +127,7 @@ class Pico8 {
     // Whether to continue running the loop function
     // Allows early stopping rather than running continuously between draws
     this.continue = true;
+    this.loop = () => {};
 
     // PICO-8 colors
     this.colors = [
@@ -166,14 +176,15 @@ class Pico8 {
   }
 
   // Run the PICO-8 program
-  run(f) {
+  run(cart) {
     init();
-    f();
+    cart.code();
     window.setInterval(() => {
       this.continue = true;
       this.loop();
       this.update();
       this.draw();
+      this.flip();
     }, this.wait);
   }
 
@@ -184,7 +195,7 @@ class Pico8 {
 
   // Called once per visible frame
   draw() {
-    display();
+
   }
 
   // Called once per update at 30fps
@@ -248,7 +259,7 @@ class Pico8 {
   }
 
   // Run a given function continuously between screen updates
-  loop(f) {
+  _(f) {
     this.loop = () => {
       var start = performance.now();
       while (this.continue && performance.now() - start < this.wait) {
@@ -271,7 +282,7 @@ class Pico8 {
     var max = this.colors.length;
     if (c0 < 0 || c0 >= max || c1 < 0 || c1 >= max) return;
 
-    if (typeof c0 === "undefined" && typeof c1 === "undefined") {
+    if (c0 === undefined && c1 === undefined) {
       for (var i = 0; i < max; i++) {
         this.drawPalette[i] = i;
         this.screenPalette[i] = i;
@@ -387,22 +398,33 @@ class Pico8 {
 
 //------------------------------------------------------------------------------
 
+class Cart {
+  constructor(author, source, code) {
+    this.author = author;
+    this.source = source;
+    this.code = code;
+  }
+}
+
+//------------------------------------------------------------------------------
+
 function animation() {
   var p = new Pico8();
 
-  // Algorithm by Sean S. LeBlanc
-  // https://twitter.com/SeanSLeBlanc/status/982648532296503304
-  var whirlwind = () => {
-    for (var i = 1; i <= 16; i++) {
-      pal(i-1, sub('029878920', i/2, i/2), 1);
+  var whirlwind = new Cart(
+    author = "Sean S. LeBlanc",
+    source = "https://twitter.com/SeanSLeBlanc/status/982648532296503304",
+    () => {
+      for (var i=1; i<=16; i++) {
+        pal(i-1,sub('029878920',i/2,i/2),1);
     }
     cls();
-    loop(() => {
-      var x = rnd(128);
-      var y = rnd(128);
-      var a = 64+32*sin(t()/2)-x;
-      var b = 64+32*cos(t()/3)-y;
-      var z = atan2(a,b)+t()/4;
+      _(() => {
+        var x = rnd(128),
+            y = rnd(128),
+            a = 64+32*sin(t()/2)-x,
+            b = 64+32*cos(t()/3)-y,
+            z = atan2(a,b)+t()/4;
       line(x,y,x+cos(z)*4,y+sin(z)*4,
         (
           pget(x,y)+
@@ -412,22 +434,23 @@ function animation() {
         )/4
         +1);
     });
-  };
+    }
+  );
 
-  // Algorithm by Eli Piilonen
-  // https://twitter.com/2DArray/status/992601223491600386
-  // In Lua, % is modulo, but in JS, % is remainder, so all % are now mod
-  var leaves = () => {
+  var leaves = new Cart(
+    author = "Eli Piilonen",
+    source = "https://twitter.com/2DArray/status/992601223491600386",
+    () => {
     var r = rnd;
-    loop(() => {
+      _(() => {
       cls();
       var s = t();
       srand(0);
       for (var i=1; i<=60; i++) {
-        var x = mod(r(148)+sin(s/(3+r(3)))*5-s*(2+rnd(12))+10,147)-10;
-        var y = mod(r(148)+s*(3+r(8))+10,147)-10;
-        var u = sin(r()+s*r()/3);
-        var v = cos(r()+s*r()/3);
+          var x = mod(r(148)+sin(s/(3+r(3)))*5-s*(2+rnd(12))+10,147)-10,
+              y = mod(r(148)+s*(3+r(8))+10,147)-10,
+              u = sin(r()+s*r()/3),
+              v = cos(r()+s*r()/3);
         for (var j=-7; j<=7; j++) {
           circ(x+u*j-v*abs(j/4),y+v*j+u*abs(j/4),abs(u*v)*(7-abs(j))/1.5,3+mod(j,2)*8);
         }
@@ -435,13 +458,15 @@ function animation() {
       flip();
     });
   }
+  );
 
-  // Algorithm by Joseph White
-  // https://twitter.com/lexaloffle/status/844964963315703809
-  var waves = () => {
+  var waves = new Cart(
+    author = "Joseph White",
+    source = "https://twitter.com/lexaloffle/status/844964963315703809",
+    () => {
     var r = 64;
     var t = 0;
-    loop(() => {
+      _(() => {
       cls();
       for (var y=-r; y<=r; y+=3) {
         for (var x=-r; x<=r; x+=2) {
@@ -453,11 +478,13 @@ function animation() {
       t += 2/r;
     });
   }
+  );
 
-  // Algorithm by Eli Piilonen
-  // https://twitter.com/2DArray/status/993594055849164800
-  var tree = () => {
-    loop(() => {
+  var tree = new Cart(
+    author = "Eli Piilonen",
+    source = "https://twitter.com/2DArray/status/993594055849164800",
+    () => {
+      _(() => {
       cls()
       for (var i=-1; i<=1; i++) {
         srand();
@@ -481,6 +508,7 @@ function animation() {
       flip();  
     })
   }
+  );
 
-  run(leaves);
+  run(whirlwind);
 }
