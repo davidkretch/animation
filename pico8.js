@@ -1,109 +1,4 @@
-// Grab substrings
-// s = "the quick brown fox"
-// print(sub(s,5,9))  --> "quick"
-// print(sub(s,5))  --> "quick brown fox"
-function sub(s, start, end) {
-  if (start >= 1) {
-    start -= 1;
-  } else if (start < 0) {
-    start = s.length + start
-}
-  if (end === undefined) {
-    return s.substring(start);
-  } else {
-    return s.substring(start, end);
-  }
-}
-
-// Returns the minimum of parameters
-function min(...values) {
-  return Math.min(...values);
-}
-
-// Returns the absolute (positive) value of x
-function abs(x) {
-  return Math.abs(x);
-}
-
-// Returns the closest integer that is equal to or below x
-function flr(x) {
-  return Math.floor(x);
-}
-
-// Returns the closest integer that is equal to or above x
-function ceil(x) {
-  return Math.ceil(x);
-}
-
-// Returns the sign of x
-function sgn(x) {
-  return Math.sign(x);
-}
-
-// Returns a mod b
-function mod(a, b) {
-  return a - b * Math.floor(a / b);
-}
-
-// Returns the square root of x
-function sqrt(x) {
-  return Math.sqrt(x);
-}
-
-// Returns the sine of x, where 1.0 indicates a full circle
-// sin is inverted to suit screenspace
-// e.g. sin(0.25) returns -1
-function sin(x) {
-  return Math.sin(-x * 2 * Math.PI);
-}
-
-// Returns the cosine of x, where 1.0 indicates a full circle
-function cos(x) {
-  return Math.cos(x * 2 * Math.PI);
-}
-
-// Converts dx, dy into an angle from 0..1
-// As with cos/sin, angle is taken to run anticlockwise in screenspace
-// e.g. atan(1, -1) returns 0.125
-function atan2(dx, dy) {
-  if (dx === 0 && dy === 0) return 0.75;
-  var a = Math.atan2(-dy, dx) / (2 * Math.PI);
-  if (a < 0) a = 1 + a;
-  return a;
-}
-
-// Add value v to the end of table t
-function add(t, v) {
-  return t.push(v);
-}
-
-// Delete the first instance of value v in table t
-function del(t, v) {
-  for (var i = 0; i < t.length; i++) {
-    if (t[i] === v) {
-      t.splice(i, 1);
-      break;
-    }
-  }
-}
-
-// Returns the length of table t
-function len(t) {
-  return t.length;
-}
-
-//------------------------------------------------------------------------------
-
-// Create a square canvas of the given size
-function createCanvas(size) {
-  var canvas = document.createElement('canvas');
-  canvas.height = size;
-  canvas.width = size;
-  return canvas;
-}
-
-//------------------------------------------------------------------------------
-
+// PICO-8 fantasy game console clone.
 class Pico8 {
   constructor() {
 
@@ -405,3 +300,111 @@ class Cart {
     this.code = code;
   }
 }
+
+//------------------------------------------------------------------------------
+
+// Grab substrings
+// s = "the quick brown fox"
+// print(sub(s,5,9))  --> "quick"
+// print(sub(s,5))  --> "quick brown fox"
+function sub(s, start, end) {
+  if (start >= 1) {
+    start -= 1;
+  } else if (start < 0) {
+    start = s.length + start
+}
+  if (end === undefined) {
+    return s.substring(start);
+  } else {
+    return s.substring(start, end);
+  }
+}
+
+// Returns the minimum of parameters
+function min(...values) {
+  return Math.min(...values);
+}
+
+// Returns the absolute (positive) value of x
+function abs(x) {
+  return Math.abs(x);
+}
+
+// Returns the closest integer that is equal to or below x
+function flr(x) {
+  return Math.floor(x);
+}
+
+// Returns the closest integer that is equal to or above x
+function ceil(x) {
+  return Math.ceil(x);
+}
+
+// Returns the sign of x
+function sgn(x) {
+  return Math.sign(x);
+}
+
+// Returns a mod b
+function mod(a, b) {
+  return a - b * Math.floor(a / b);
+}
+
+// Returns the square root of x
+function sqrt(x) {
+  return Math.sqrt(x);
+}
+
+// Returns the sine of x, where 1.0 indicates a full circle
+// sin is inverted to suit screenspace
+// e.g. sin(0.25) returns -1
+function sin(x) {
+  return Math.sin(-x * 2 * Math.PI);
+}
+
+// Returns the cosine of x, where 1.0 indicates a full circle
+function cos(x) {
+  return Math.cos(x * 2 * Math.PI);
+}
+
+// Converts dx, dy into an angle from 0..1
+// As with cos/sin, angle is taken to run anticlockwise in screenspace
+// e.g. atan(1, -1) returns 0.125
+function atan2(dx, dy) {
+  if (dx === 0 && dy === 0) return 0.75;
+  var a = Math.atan2(-dy, dx) / (2 * Math.PI);
+  if (a < 0) a = 1 + a;
+  return a;
+}
+
+// Add value v to the end of table t
+function add(t, v) {
+  return t.push(v);
+}
+
+// Delete the first instance of value v in table t
+function del(t, v) {
+  for (var i = 0; i < t.length; i++) {
+    if (t[i] === v) {
+      t.splice(i, 1);
+      break;
+    }
+  }
+}
+
+// Returns the length of table t
+function len(t) {
+  return t.length;
+}
+
+//------------------------------------------------------------------------------
+
+// Create a square canvas of the given size
+function createCanvas(size) {
+  var canvas = document.createElement('canvas');
+  canvas.height = size;
+  canvas.width = size;
+  return canvas;
+}
+
+//------------------------------------------------------------------------------
