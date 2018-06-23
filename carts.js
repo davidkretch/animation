@@ -281,3 +281,130 @@ var ocean = new Cart(
     flip()goto _
   }
 );
+
+var fireflies = new Cart(
+  author = "@TedAjax",
+  source = "https://twitter.com/TedAjax/status/1004865330831712256",
+  () => {
+    l={10,9,8,2,1}
+    ::_::
+    cls()srand()for m=0,99 do
+    x=rnd(8)-4
+    z=rnd(8)-4
+    y=rnd(14)-7
+    for n=4,0,-1 do
+    a=t()/4+n*.01
+    b=t()/4+(n+1)*.01
+    c=cos(a)*x-sin(a)*z
+    d=sin(a)*x+cos(a)*z+7
+    g=64+(c*64)/d
+    h=64+(y*64)/d
+    circfill(g,h,max((7-d)+n/2,0),l[4-n+1])
+    end
+    end
+    flip()goto _
+  }
+);
+
+var cone = new Cart(
+  author = "@lexaloffle",
+  source = "https://twitter.com/lexaloffle/status/1003303393572425731",
+  () => {
+    r=rnd::_::srand()f=t()/9
+    cls()n=650+60*sin(f/3)for i=1,n do
+    a=f+r(1)d=.3+r(9)y=-3
+    if i>400 then j=i-400 y=j*2/n-1
+    a=j*40/n+f+j/3 d=j*3/n end
+    x=d*cos(a)z=2+cos(f)+d*sin(a)x=64+x*64/z
+    y=64+y*64/z c=6+i%5 e=5/z
+    if(z>.1)circfill(x,y,e,c)circfill(x,128-y,e,c/4)
+    end flip()goto _
+  }
+);
+
+var cube = new Cart(
+  author = "@lexaloffle",
+  source = "https://twitter.com/lexaloffle/status/1004070761030606848",
+  () => {
+    function _init()
+    -- make some points
+    -- 7x7x7 cube
+    
+    pt={}
+    for z=-1,1,1/3 do
+      for y=-1,1,1/3 do
+      for x=-1,1,1/3 do
+        p={}
+        p.x, p.y, p.z=x,y,-z
+        p.col=8+(x*2+y*3)%8
+        add(pt,p)
+      end
+      end
+    end
+    
+    end
+
+    --rotate x,y by angle a
+    function rot(x,y,a)
+    local x0=x
+    x=cos(a)*x-sin(a)*y
+    y=cos(a)*y+sin(a)*x0
+    return x,y
+    end
+
+    function _draw()
+    cls()
+    for p in all(pt) do
+      -->camera space
+      
+      p.cx,p.cz=rot(p.x,p.z,t()/8)
+      p.cy,p.cz=rot(p.y,p.cz,t()/7)
+      
+      
+      p.cz+=2 + cos(t()/6)
+      
+    end
+    
+    --sort by distance from camera
+    --because they go out of order
+    --slowly, doing a bubble sort
+    --up and down 3 times is good
+    --enough
+
+    for pass=1,3 do
+    for i=1,#pt-1 do
+      if pt[i].cz<pt[i+1].cz then
+      pt[i],pt[i+1]=
+      pt[i+1],pt[i]
+      end
+    end
+    for i=#pt-1,1,-1 do
+      if pt[i].cz<pt[i+1].cz then
+      pt[i],pt[i+1]=
+        pt[i+1],pt[i]
+      end
+    end
+    end
+    
+    rad1 = 5+cos(t()/4)*4
+
+    for p in all(pt) do
+      --> screen space
+      sx = 64 + p.cx*64/p.cz
+      sy = 64 + p.cy*64/p.cz
+      rad=rad1/p.cz
+      
+      if (p.cz > 0.1) then -- clip
+      circfill(sx, sy, rad, p.col)
+      circfill(sx+rad/3, sy-rad/3,
+        rad/3, 7)
+      
+      end
+    end
+    
+    print([[
+    ████▒ pico-8.com ▒████
+    ]])
+    end
+  }
+);
